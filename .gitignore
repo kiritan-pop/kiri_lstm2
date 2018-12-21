@@ -1,0 +1,8 @@
+*.txt
+*.json
+*.model
+*.npy
+*.h5
+step01_get_toots.rb
+old/
+test/
