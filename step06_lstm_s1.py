@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-from tensorflow.keras.models import Sequential,load_model
-from tensorflow.keras.callbacks import LambdaCallback,EarlyStopping
-from tensorflow.keras.layers import Dense, Activation, Conv1D, LSTM,\
+from keras.models import Sequential,load_model
+from keras.callbacks import LambdaCallback,EarlyStopping
+from keras.layers import Dense, Activation, Conv1D, LSTM,\
                     Dropout, GaussianNoise, BatchNormalization , Flatten, MaxPooling1D
-from tensorflow.keras.optimizers import RMSprop, Adam
-from tensorflow.keras.utils import Sequence, multi_gpu_model
-from tensorflow.keras import backend
+from keras.optimizers import RMSprop, Adam
+from keras.utils import Sequence, multi_gpu_model
+from keras import backend
 from gensim.models.doc2vec import Doc2Vec
 
 import multiprocessing
@@ -21,8 +21,8 @@ graph = tf.get_default_graph()
 
 #変更するとモデル再構築必要
 VEC_SIZE = 256  # Doc2vecの出力より
-MAXLEN = 5     # vec推定で参照するトゥート(vecor)数
-AVE_LEN = 5
+MAXLEN = 10     # vec推定で参照するトゥート(vecor)数
+AVE_LEN = 4
 
 #いろいろなパラメータ
 epochs = 10000
@@ -31,38 +31,10 @@ process_count = multiprocessing.cpu_count() - 1
 
 def lstm_model():
     model = Sequential()
-    # model.add(Conv1D(filters=128,kernel_size=8,strides=1, padding='same', input_shape=(MAXLEN, VEC_SIZE)))
-    # # model.add(BatchNormalization())
-    # model.add(Activation('relu'))
-    # model.add(MaxPooling1D(2, padding='same'))
-    # model.add(Conv1D(filters=256,kernel_size=8,strides=1, padding='same'))
-    # # model.add(BatchNormalization())
-    # model.add(Activation('relu'))
-    # model.add(MaxPooling1D(2, padding='same'))
-    # model.add(Conv1D(filters=512,kernel_size=8,strides=1, padding='same'))
-    # # model.add(BatchNormalization())
-    # model.add(Activation('relu'))
-    # model.add(MaxPooling1D(2, padding='same'))
-    # model.add(Conv1D(filters=1024,kernel_size=8,strides=1, padding='same'))
-    # # model.add(BatchNormalization())
-    # model.add(Activation('tanh'))
-    # model.add(Flatten())
-    # model.add(Dropout(0.5))
-    # model.add(Dense(VEC_SIZE))
-    # model.add(Activation('tanh'))
-
-
     model.add(LSTM(1024, return_sequences=True, input_shape=(MAXLEN, VEC_SIZE)))
-    # model.add(LSTM(512, return_sequences=True))
-    # model.add(LSTM(256, return_sequences=True))
-    # model.add(Flatten())
+    model.add(GaussianNoise(0.2))
     model.add(LSTM(512))
     model.add(Dense(VEC_SIZE))
-
-    # model.add(Dense(VEC_SIZE*128, activation="relu", input_shape=(MAXLEN, VEC_SIZE)))
-    # model.add(Flatten())
-    # model.add(Dropout(0.3))
-    # model.add(Dense(VEC_SIZE))
 
     return model
 
@@ -181,7 +153,7 @@ if __name__ == '__main__':
 
     generator = DataGenerator(d2v_model=d2v_model, batch_size=args.batch_size)
     print_callback = LambdaCallback(on_epoch_end=on_epoch_end)
-    ES = EarlyStopping(monitor='loss', min_delta=0.0001, patience=10, verbose=0, mode='auto')
+    ES = EarlyStopping(monitor='loss', min_delta=0.001, patience=5, verbose=0, mode='auto')
 
     m.fit_generator(generator,
                     callbacks=[print_callback,ES],

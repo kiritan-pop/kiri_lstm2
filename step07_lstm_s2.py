@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-from tensorflow.python.keras.models import Sequential,load_model,Model
-from tensorflow.python.keras.callbacks import LambdaCallback,EarlyStopping
-from tensorflow.python.keras.layers import Dense, Activation, CuDNNLSTM, LSTM, Dropout,\
+from keras.models import Sequential,load_model,Model
+from keras.callbacks import LambdaCallback,EarlyStopping
+from keras.layers import Dense, Activation, CuDNNLSTM, LSTM, Dropout,\
      GaussianNoise, BatchNormalization, Embedding, Flatten, Input, Concatenate, Reshape
-from tensorflow.python.keras.optimizers import RMSprop
-from tensorflow.python.keras.utils import Sequence, multi_gpu_model
-from tensorflow.python.keras import backend
+from keras.optimizers import RMSprop
+from keras.utils import Sequence, multi_gpu_model
+from keras import backend
 # from tensorflow.python.keras.preprocessing.text import Tokenizer
 
 import multiprocessing
@@ -43,17 +43,10 @@ def lstm_model():
     vector = Reshape(target_shape=(1, VEC_SIZE))(input_vector)
 
     layers = Concatenate(axis=1)([vector, layers])
+    layers = BatchNormalization()(layers)
     layers = LSTM(1024, return_sequences=True)(layers)
-    # layers = BatchNormalization()(layers)
-    # layers = Activation(activation="relu")(layers)
+    layers = LSTM(768, return_sequences=True)(layers)
     layers = LSTM(512)(layers)
-    # layers = BatchNormalization()(layers)
-    # layers = Activation(activation="relu")(layers)
-    # layers = Concatenate(axis=1)([layers, input_vector])
-    # layers = Dense(768*3)(layers)
-    # layers = BatchNormalization()(layers)
-    layers = Dropout(0.3)(layers)
-    # layers = Activation(activation="relu")(layers)
     layers = Dense(num_chars+2, activation='softmax')(layers)
 
     return Model(inputs=[input_vector, input_chars], outputs=[layers])
@@ -92,12 +85,15 @@ class DataGenerator(Sequence):
         self.char_idx[END] = self.num_chars + 1
         self.vecs = d2v_model.docvecs.vectors_docs
         self.toots = list([tmp.strip() for tmp in open(toots_path).readlines()])
+        self.accts = list([tmp.strip() for tmp in open("acct.txt").readlines()])
         self.x_vecs_id = []
         self.x_idxs = []
         self.y_next_idx = []
-        for id,toot in enumerate(self.toots):
-            # if id%10000 == 0:
-            #     print(id,len(self.x_vecs_id),len(self.x_idxs),len(self.y_next_idx))
+        for id,(toot,acct) in enumerate( zip(self.toots,self.accts) ):
+        # for id,toot in enumerate( self.toots):
+            if acct in ["kiri_bot01", "JC", "earthquake", "pyonpyon", "jst", "nihonshucalendar", "aoki","nannohi","bt","secondary","notypeg","5","inbosk"] or len(toot) < 15:
+            # if len(toot) < 15:
+                continue
             tmp_chars = MU * MAXLEN
             for next_char in toot+END:
                 tmp_idxs = []
@@ -219,7 +215,7 @@ if __name__ == '__main__':
     d2v_model = Doc2Vec.load(args.d2v_path)
     generator = DataGenerator(toots_path=args.input, d2v_model=d2v_model, batch_size=args.batch_size, step=args.step)
     print_callback = LambdaCallback(on_epoch_end=on_epoch_end)
-    ES = EarlyStopping(monitor='loss', min_delta=0.0001, patience=10, verbose=0, mode='auto')
+    ES = EarlyStopping(monitor='loss', min_delta=0.001, patience=5, verbose=0, mode='auto')
 
     if args.mode == 'train':
         m.fit_generator(generator,

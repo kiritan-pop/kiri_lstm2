@@ -3,7 +3,7 @@
 import MeCab
 import sys,re
 
-tagger = MeCab.Tagger('-Owakati -d /usr/lib/mecab/dic/mecab-ipadic-neologd -u ../dic/nicodic.dic')
+tagger = MeCab.Tagger('-Owakati -d /usr/lib/mecab/dic/mecab-ipadic-neologd -u ../kiri_bot/dic/nicodic.dic')
 # tagger = MeCab.Tagger('-Owakati -d /usr/lib/mecab/dic/mecab-ipadic-neologd -u ../dic/name.dic,../dic/id.dic,../dic/nicodic.dic')
 
 fo = open(sys.argv[2], 'w')

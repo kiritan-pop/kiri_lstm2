@@ -42,7 +42,7 @@ if not os.path.exists(sys.argv[3]):
                     min_count=5,
                     sample=1e-5,
                     workers=4,
-                    epochs=30,
+                    epochs=50,
                     negative=5,
                     hs=1,
                     dm=1)

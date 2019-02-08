@@ -3,6 +3,7 @@
 *.model
 *.npy
 *.h5
+*.db
 step01_get_toots.rb
 old/
 test/
