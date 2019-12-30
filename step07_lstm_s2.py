@@ -43,10 +43,11 @@ def lstm_model():
     vector = Reshape(target_shape=(1, VEC_SIZE))(input_vector)
 
     layers = Concatenate(axis=1)([vector, layers])
-    layers = BatchNormalization()(layers)
+    # layers = BatchNormalization()(layers)
+    layers = GaussianNoise(0.1)(layers)
     layers = LSTM(1024, return_sequences=True)(layers)
-    layers = LSTM(768, return_sequences=True)(layers)
     layers = LSTM(512)(layers)
+    layers = Dropout(0.3)(layers)
     layers = Dense(num_chars+2, activation='softmax')(layers)
 
     return Model(inputs=[input_vector, input_chars], outputs=[layers])
@@ -85,23 +86,16 @@ class DataGenerator(Sequence):
         self.char_idx[END] = self.num_chars + 1
         self.vecs = d2v_model.docvecs.vectors_docs
         self.toots = list([tmp.strip() for tmp in open(toots_path).readlines()])
-        self.accts = list([tmp.strip() for tmp in open("acct.txt").readlines()])
         self.x_vecs_id = []
         self.x_idxs = []
         self.y_next_idx = []
-        for id,(toot,acct) in enumerate( zip(self.toots,self.accts) ):
-        # for id,toot in enumerate( self.toots):
-            if acct in ["kiri_bot01", "JC", "earthquake", "pyonpyon", "jst", "nihonshucalendar", "aoki","nannohi","bt","secondary","notypeg","5","inbosk"] or len(toot) < 15:
-            # if len(toot) < 15:
-                continue
+        for id,toot in enumerate( self.toots):
             tmp_chars = MU * MAXLEN
             for next_char in toot+END:
                 tmp_idxs = []
                 try:
                     for char in tmp_chars:
                         tmp_idxs.append(self.char_idx[char])
-                    # tmp_mat = np.zeros((self.num_chars+1))
-                    # tmp_mat[ self.char_idx[next_char] ] = 1
                     tmpidx = self.char_idx[next_char]
                 except Exception:
                     pass
@@ -117,20 +111,14 @@ class DataGenerator(Sequence):
 
     def __getitem__(self, idx):
         # データの取得実装
-        # idx = 505
         vecs = [self.vecs[i] for i in  self.x_vecs_id[self.batch_size*idx:self.batch_size*(idx+1)]]
         tmp_mat = [] 
-        # next_chars = [ tmp_mat[i, idx] for i,idx in enumerate( self.y_next_idx[self.batch_size*idx:self.batch_size*(idx+1)]) ] 
-        for i,j in enumerate( self.y_next_idx[self.batch_size*idx:self.batch_size*(idx+1)]) :
+        for j in self.y_next_idx[self.batch_size*idx:self.batch_size*(idx+1)]:
             mat = np.zeros((self.num_chars+2))
             mat[j] = 1
             tmp_mat.append(mat)
 
-        # print("idx ",idx)
-        idx = idx % self.__len__()
-        # print("x vec ",np.asarray(vecs).shape)
-        # print("x char",np.asarray(self.x_idxs[self.batch_size*idx:self.batch_size*(idx+1)]).shape)
-        # print("x next",np.asarray(tmp_mat).shape)
+        # idx = idx % self.__len__()
         return [np.asarray(vecs),\
                 np.asarray(self.x_idxs[self.batch_size*idx:self.batch_size*(idx+1)])],\
                  np.asarray(tmp_mat)
@@ -138,9 +126,7 @@ class DataGenerator(Sequence):
     def __len__(self):
         # 全データ数をバッチサイズで割って、何バッチになるか返すよー！
         deta_len = len(self.x_vecs_id)
-        # sample_per_epoch = deta_len//self.batch_size
         sample_per_epoch = math.ceil(deta_len/self.batch_size)
-        # print("sample_per_epoch=",sample_per_epoch)
         return sample_per_epoch
 
     def on_epoch_end(self):
@@ -164,7 +150,7 @@ class DataGenerator(Sequence):
                 print('-----  toot on input vec: "' + toot + '"')
                 sys.stdout.write(generated)
 
-                for i in range(50):
+                for _ in range(50):
                     with graph.as_default():
                         preds = model.predict_on_batch([ np.asarray([vec]),  np.asarray([idxs]) ])
                         next_index = sample(preds[0], diversity)
@@ -195,7 +181,7 @@ if __name__ == '__main__':
     backend.set_session(session)
 
     GPUs = len(args.gpu.split(','))
-    wl_chars = list(open('wl.txt').read())
+    wl_chars = list(open('./out/wl.txt').read())
 
     if os.path.exists(args.model_path):
         # loading the model

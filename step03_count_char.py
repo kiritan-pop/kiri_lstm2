@@ -15,12 +15,12 @@ def main():
     for k,v in sorted(cnt_dict.items(), key=lambda x: -x[1]):
         sorted_dict[k] = v
 
-    with open('count_char.json','w') as fw:
+    with open('./out/count_char.json','w') as fw:
         json.dump(sorted_dict,fw,indent=4,ensure_ascii=False)
 
     tmp = list(sorted_dict.keys())
     print(len(tmp))
-    with open('wl.txt','w') as fw:
+    with open('./out/wl.txt','w') as fw:
         fw.write("".join(tmp[:5000]))
 
 if __name__ == '__main__':

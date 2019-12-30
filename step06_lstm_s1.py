@@ -22,7 +22,7 @@ graph = tf.get_default_graph()
 #変更するとモデル再構築必要
 VEC_SIZE = 256  # Doc2vecの出力より
 MAXLEN = 10     # vec推定で参照するトゥート(vecor)数
-AVE_LEN = 4
+AVE_LEN = 2
 
 #いろいろなパラメータ
 epochs = 10000
@@ -32,8 +32,9 @@ process_count = multiprocessing.cpu_count() - 1
 def lstm_model():
     model = Sequential()
     model.add(LSTM(1024, return_sequences=True, input_shape=(MAXLEN, VEC_SIZE)))
-    model.add(GaussianNoise(0.2))
+    model.add(GaussianNoise(0.15))
     model.add(LSTM(512))
+    model.add(Dropout(0.3))
     model.add(Dense(VEC_SIZE))
 
     return model

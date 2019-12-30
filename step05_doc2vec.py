@@ -36,16 +36,18 @@ for (line,tag) in zip(lines,tags):
 if not os.path.exists(sys.argv[3]): 
     model = Doc2Vec(documents=training_docs,
                     vector_size=256,
-                    window=5,
-                    #alpha=0.0025,
-                    #min_alpha=.0001,
-                    min_count=5,
+                    window=15,
+                    alpha=0.025,
+                    min_alpha=0.0001,
+                    min_count=3,
                     sample=1e-5,
-                    workers=4,
-                    epochs=50,
+                    workers=8,
+                    epochs=100,
                     negative=5,
-                    hs=1,
-                    dm=1)
+                    hs=0,
+                    dm=1,
+                    dbow_words=0,
+                    )
 else:
     model   = Doc2Vec.load(sys.argv[3])
     model.train(documents=training_docs, epochs=50, total_examples=model.corpus_count)

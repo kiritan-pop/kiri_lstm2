@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from tensorflow.keras.models import load_model
-from tensorflow.keras import backend
+from keras.models import load_model
+from keras import backend
 from gensim.models.doc2vec import Doc2Vec
 import MeCab
 import numpy as np
@@ -27,7 +27,7 @@ pat3 = re.compile(r'^\n')
 pat4 = re.compile(r'\n')
 
 #辞書読み込み
-wl_chars = list(open('wl.txt').read())
+wl_chars = list(open('out/wl.txt').read())
 idx_char = {i:c for i,c in enumerate(wl_chars)}
 num_chars = len(idx_char)
 idx_char[num_chars] = MU
@@ -36,9 +36,9 @@ char_idx = {c:i for i,c in enumerate(wl_chars)}
 char_idx[MU] = num_chars
 char_idx[END] = num_chars + 1
 
-d2v_path = 'd2v.model'
-lstm_vec_path = 'lstm_vec.h5'
-lstm_set_path = 'lstm_set.h5'
+d2v_path = 'out/d2v.model'
+lstm_vec_path = 'out/lstm_vec.h5'
+lstm_set_path = 'out/lstm_set.h5'
 
 d2vmodel = Doc2Vec.load(d2v_path)
 lstm_vec_model = load_model(lstm_vec_path)

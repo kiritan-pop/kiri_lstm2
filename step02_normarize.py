@@ -25,7 +25,8 @@ def normalize(num,readQ,writeQ):
             outs = []
             for line in lines:
                 line = pat1.sub('',line)
-                text = un_func("NFKC", line.strip()) + '\n'
+                # text = un_func("NFKC", line.strip()) + '\n'
+                text = line.strip() + '\n'
                 # outs.append( pat6.sub(r'\1',pat5.sub(r'\1',pat3.sub(r'',text )) ))
                 outs.append(text)
                 # text = line.strip() + '\n'
