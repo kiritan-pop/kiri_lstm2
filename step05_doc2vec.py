@@ -10,11 +10,11 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 # 空のリストを作成（学習データとなる各文書を格納）
 
-f = open(sys.argv[1])
+f = open('tmp/ids_merge.txt', 'r')
 tags = f.readlines() # 1行毎にファイル終端まで全て読む(改行文字も含まれる)
 f.close()
 
-f = open(sys.argv[2])
+f = open('tmp/wakati.txt', 'r')
 lines = f.readlines() # 1行毎にファイル終端まで全て読む(改行文字も含まれる)
 f.close()
 
@@ -33,24 +33,24 @@ for (line,tag) in zip(lines,tags):
 # documents:学習データ（TaggedDocumentのリスト）
 # min_count=1:最低1回出現した単語を学習に使用する
 # 学習モデル=DBOW（デフォルトはdm=1:学習モデル=DM）
-if not os.path.exists(sys.argv[3]): 
+if not os.path.exists('out/d2v.model'):
     model = Doc2Vec(documents=training_docs,
-                    vector_size=256,
-                    window=15,
-                    alpha=0.025,
-                    min_alpha=0.0001,
-                    min_count=3,
-                    sample=1e-5,
-                    workers=8,
-                    epochs=100,
-                    negative=5,
-                    hs=0,
-                    dm=1,
-                    dbow_words=0,
+                    vector_size=128,
+                    window=8,
+                    # alpha=0.025,
+                    # min_alpha=0.0001,
+                    min_count=10,
+                    # sample=1e-5,
+                    # workers=2,
+                    epochs=10,
+                    # negative=5,
+                    # hs=0,
+                    # dm=1,
+                    # dbow_words=0,
                     )
 else:
-    model   = Doc2Vec.load(sys.argv[3])
+    model = Doc2Vec.load('out/d2v.model')
     model.train(documents=training_docs, epochs=50, total_examples=model.corpus_count)
 
 #model.delete_temporary_training_data(keep_doctags_vectors=False, keep_inference=False)
-model.save(sys.argv[3])
+model.save('out/d2v.model')

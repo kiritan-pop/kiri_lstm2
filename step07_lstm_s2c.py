@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-from keras.models import Sequential,load_model,Model
-from keras.callbacks import LambdaCallback,EarlyStopping
-from keras.layers import Dense, Activation, CuDNNLSTM, LSTM, Dropout,\
-     GaussianNoise, BatchNormalization, Embedding, Flatten, Input, Concatenate, Reshape
-from keras.optimizers import RMSprop
-from keras.utils import Sequence, multi_gpu_model
-from keras import backend
-# from tensorflow.python.keras.preprocessing.text import Tokenizer
+import tensorflow as tf
+from tensorflow.keras.models import Sequential, load_model, Model
+from tensorflow.keras.callbacks import LambdaCallback,EarlyStopping
+from tensorflow.keras.layers import Dense, Activation, LSTM, Dropout,\
+    GaussianNoise, BatchNormalization, Embedding, Flatten, Input, Concatenate, Reshape, Bidirectional
+from tensorflow.keras.optimizers import RMSprop,Nadam
+from tensorflow.keras.utils import Sequence, multi_gpu_model
+from tensorflow.keras import backend
 
 import multiprocessing
 import numpy as np
@@ -17,17 +17,15 @@ import argparse
 import math
 from gensim.models.doc2vec import Doc2Vec
 
-import tensorflow as tf
-graph = tf.get_default_graph()
-
 #変更するとモデル再構築必要
+DOC_VEC_SIZE = 128 # Doc2vecの出力より
 VEC_SIZE = 256  # 文字ベクトル次元／トゥートベクトル次元
 MAXLEN = 5      # timestep
 MU = "🧪"       # 無
 END = "🦷"      # 終わりマーク
 
 #いろいろなパラメータ
-epochs = 10000
+epochs = 30
 # 同時実行プロセス数
 process_count = multiprocessing.cpu_count() - 1
 
@@ -39,31 +37,17 @@ def lstm_model():
                         output_dim=VEC_SIZE,
                         input_length=MAXLEN)(input_chars)
 
-    input_vector = Input(shape=(VEC_SIZE,))
-    vector = Reshape(target_shape=(1, VEC_SIZE))(input_vector)
-
-    layers = Concatenate(axis=1)([vector, layers])
-    # layers = BatchNormalization()(layers)
-    layers = GaussianNoise(0.1)(layers)
-    layers = LSTM(1024, return_sequences=True)(layers)
-    layers = LSTM(512)(layers)
+    input_vector = Input(shape=(DOC_VEC_SIZE,))
+    docvec = Dense(VEC_SIZE)(input_vector)
+    docvec = Reshape(target_shape=(1, VEC_SIZE))(docvec)
+    layers = Concatenate(axis=1)([docvec, layers])
+    layers = Bidirectional(LSTM(1024, return_sequences=True))(layers)
+    layers = GaussianNoise(0.15)(layers)
+    layers = Bidirectional(LSTM(512))(layers)
     layers = Dropout(0.3)(layers)
     layers = Dense(num_chars+2, activation='softmax')(layers)
 
     return Model(inputs=[input_vector, input_chars], outputs=[layers])
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str, default='train')
-    parser.add_argument("--input", type=str)
-    parser.add_argument("--model_path", type=str)
-    parser.add_argument("--d2v_path", type=str)
-    parser.add_argument("--gpu", type=str, default='0')
-    parser.add_argument("--idx", type=int, default=0)
-    parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--step", type=int, default=1)
-    args = parser.parse_args()
-    return args
 
 def sample(preds, temperature=1.0):
     # helper function to sample an index from a probability array
@@ -151,67 +135,85 @@ class DataGenerator(Sequence):
                 sys.stdout.write(generated)
 
                 for _ in range(50):
-                    with graph.as_default():
-                        preds = model.predict_on_batch([ np.asarray([vec]),  np.asarray([idxs]) ])
-                        next_index = sample(preds[0], diversity)
-                        idxs = idxs[1:]
-                        idxs.append(next_index)
-                        next_char = self.idx_char[next_index]
-                        generated += next_char
-                        sys.stdout.write(next_char)
-                        sys.stdout.flush()
-                        if next_char == END:
-                            break
+                    preds = model.predict_on_batch([ np.asarray([vec]),  np.asarray([idxs]) ])
+                    next_index = sample(preds[0], diversity)
+                    idxs = idxs[1:]
+                    idxs.append(next_index)
+                    next_char = self.idx_char[next_index]
+                    generated += next_char
+                    sys.stdout.write(next_char)
+                    sys.stdout.flush()
+                    if next_char == END:
+                        break
                 print()
 
 def on_epoch_end(epoch, logs):
     ### save
     sleep(5)
     print('----- saving model...')
-    model.save(args.model_path)
+    model.save(f'/content/drive/My Drive/colab/lstm_set.h5')
+    sleep(5)
+    model.save(f'/content/drive/My Drive/colab/lstm_set_{epoch}.h5')
 
 if __name__ == '__main__':
-    #パラメータ取得
-    args = get_args()
-    #GPU設定
-    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=False,
-                                                    visible_device_list=args.gpu
-                                                    ))
-    session = tf.Session(config=config)
-    backend.set_session(session)
+    gpu_id = 0
+    print(tf.__version__)
+    if tf.__version__ >= "2.1.0":
+        if 'COLAB_TPU_ADDR' in os.environ:
+            resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='grpc://' + os.environ['COLAB_TPU_ADDR'])
+            tf.config.experimental_connect_to_cluster(resolver)
+            # This is the TPU initialization code that has to be at the beginning.
+            tf.tpu.experimental.initialize_tpu_system(resolver)
+            strategy = tf.distribute.experimental.TPUStrategy(resolver)
+        else:
+            physical_devices = tf.config.list_physical_devices('GPU')
+            tf.config.list_physical_devices('GPU')
+            tf.config.set_visible_devices(physical_devices[gpu_id], 'GPU')
+            tf.config.experimental.set_memory_growth(
+                physical_devices[gpu_id], True)
+    elif tf.__version__ >= "2.0.0":
+        #TF2.0
+        physical_devices = tf.config.experimental.list_physical_devices('GPU')
+        tf.config.experimental.set_visible_devices(
+            physical_devices[gpu_id], 'GPU')
+        tf.config.experimental.set_memory_growth(
+            physical_devices[gpu_id], True)
+    else:
+        from keras.backend.tensorflow_backend import set_session
+        config = tf.ConfigProto(
+            gpu_options=tf.GPUOptions(
+                visible_device_list=str(gpu_id),  # specify GPU number
+                allow_growth=True
+            )
+        )
+        set_session(tf.Session(config=config))
 
-    GPUs = len(args.gpu.split(','))
-    wl_chars = list(open('./out/wl.txt').read())
+    wl_chars = list(open('/content/drive/My Drive/colab/wl.txt').read())
 
-    if os.path.exists(args.model_path):
+    if os.path.exists('/content/drive/My Drive/colab/lstm_set.h5'):
         # loading the model
         print('load model...')
-        model =  load_model(args.model_path)
+        model = load_model('/content/drive/My Drive/colab/lstm_set.h5')
     else:
         model = lstm_model()
     model.summary()
 
-    model.compile(loss='categorical_crossentropy', optimizer=RMSprop()) #mean_squared_error
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=Nadam())  # mean_squared_error
     m = model
-    if GPUs > 1:
-        p_model = multi_gpu_model(model, gpus=GPUs)
-        p_model.compile(loss='categorical_crossentropy', optimizer=RMSprop())
-        m = p_model
 
-    d2v_model = Doc2Vec.load(args.d2v_path)
-    generator = DataGenerator(toots_path=args.input, d2v_model=d2v_model, batch_size=args.batch_size, step=args.step)
+    d2v_model = Doc2Vec.load("/content/drive/My Drive/colab/d2v.model")
+    generator = DataGenerator(
+        toots_path="/content/drive/My Drive/colab/toot_merge_n.txt", d2v_model=d2v_model, batch_size=4096, step=1)
     print_callback = LambdaCallback(on_epoch_end=on_epoch_end)
     ES = EarlyStopping(monitor='loss', min_delta=0.001, patience=5, verbose=0, mode='auto')
 
-    if args.mode == 'train':
-        m.fit_generator(generator,
-                        callbacks=[print_callback,ES],
-                        epochs=epochs,
-                        verbose=1,
-                        # steps_per_epoch=60,
-                        initial_epoch=args.idx,
-                        max_queue_size=process_count,
-                        workers=2,
-                        use_multiprocessing=False)
-    else:
-        generator.on_epoch_end()
+    m.fit(generator,
+                    callbacks=[print_callback,ES],
+                    epochs=30,
+                    verbose=1,
+                    # steps_per_epoch=60,
+                    initial_epoch=0,
+                    max_queue_size=process_count,
+                    workers=2,
+                    use_multiprocessing=False)

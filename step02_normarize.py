@@ -25,16 +25,9 @@ def normalize(num,readQ,writeQ):
             outs = []
             for line in lines:
                 line = pat1.sub('',line)
-                # text = un_func("NFKC", line.strip()) + '\n'
                 text = line.strip() + '\n'
-                # outs.append( pat6.sub(r'\1',pat5.sub(r'\1',pat3.sub(r'',text )) ))
                 outs.append(text)
-                # text = line.strip() + '\n'
-                # out = []
-                # for c in list(text):
-                #     if c in wl_chars:
-                #         out.append(c)
-                # outs.append( pat6.sub(r'\1',pat5.sub(r'\1',pat3.sub(r'',"".join(out) )) ))
+
             writeQ.put(outs)
         except:
             return
@@ -42,7 +35,7 @@ def normalize(num,readQ,writeQ):
 def reader(readQ):
     lines = []
     print('--Start reading--')
-    for i,line in enumerate(open(sys.argv[1], 'r')):
+    for i,line in enumerate(open('tmp/toot_merge.txt', 'r')):
         lines.append(line)
         if BUF_LINES > 0 and i % BUF_LINES == BUF_LINES - 1:
             readQ.put(lines)
@@ -54,7 +47,7 @@ def reader(readQ):
     print('--Finish reading--')
 
 def writer(writeQ):
-    with open(sys.argv[2],'w') as fo:
+    with open('tmp/toot_merge_n.txt', 'w') as fo:
         while True:
             try:
                 lines = writeQ.get(timeout=timeout)
