@@ -8,3 +8,4 @@ step01_get_toots.rb
 old/
 test/
 step01_get_toots_alt.rb
+test*.py
