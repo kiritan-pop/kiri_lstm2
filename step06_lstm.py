@@ -128,7 +128,8 @@ if __name__ == '__main__':
     model.summary()
     m = model
     # d2v ベクトル取得
-    temp_vecs = Doc2Vec.load("/content/drive/My Drive/colab/d2v.model").docvecs.vectors_docs
+    d2v_model = Doc2Vec.load("/content/drive/My Drive/colab/d2v.model")
+    temp_vecs = d2v_model.docvecs.vectors_docs
     d2v_vecs = np.zeros((temp_vecs.shape[0] - AVE_LEN, temp_vecs.shape[1]))
     for i in range(temp_vecs.shape[0] - AVE_LEN):
         d2v_vecs[i,:] = np.mean(temp_vecs[i:i+AVE_LEN,:], axis=0)
