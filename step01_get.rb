@@ -13,13 +13,13 @@ marge_text = ""
 mediatext1b = ""
 username = ''
 i = 0
-db = SQLite3::Database.new('db/statuses.db',:timeout=>1200)
-f_toot = File.open('tmp/toot.txt', "w")
-f_ids = File.open('tmp/ids.txt', "w")
+db = SQLite3::Database.new('db/nico_statuses.db',:timeout=>1200)
+f_toot = File.open('tmp/toot_nico.txt', "w")
+f_ids = File.open('tmp/ids_nico.txt', "w")
 
 sql = "select id,content,acct from statuses order by id desc"
 db.execute(sql)  { |id,content,acct|
-    break if i > 1000000
+    break if i > 100000
     next if acct=='kiri_bot01'
     contents = Nokogiri::HTML.parse(content)
     text = ''
@@ -28,7 +28,7 @@ db.execute(sql)  { |id,content,acct|
         text += item.text.strip  if item.text?
     }
     f_toot.puts(text)
-    f_ids.puts('kiri_'+id.to_s)
+    f_ids.puts('nico_'+id.to_s)
     i += 1
 }
 

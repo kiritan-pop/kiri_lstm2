@@ -18,7 +18,7 @@ import argparse
 from math import ceil
 
 #変更するとモデル再構築必要
-DOC_VEC_SIZE = 128  # Doc2vecの出力より
+DOC_VEC_SIZE = 32  # Doc2vecの出力より
 MAXLEN = 10     # vec推定で参照するトゥート(vecor)数
 AVE_LEN = 2
 
@@ -46,6 +46,21 @@ def build_tf_ds(batch_size=1):
             yield (d2v_vecs[i:i + MAXLEN, :], d2v_vecs[i + MAXLEN,:])
 
     tf_ds = tf.data.Dataset.from_generator(gen, (tf.float32, tf.float32))
+    tf_ds = tf_ds.cache()
+    tf_ds = tf_ds.shuffle(256)
+    tf_ds = tf_ds.batch(batch_size, drop_remainder=True)
+    tf_ds = tf_ds.prefetch(tf.data.experimental.AUTOTUNE)    
+    return tf_ds
+
+
+def build_tf_ds_alt(batch_size=1):
+    x_vecs = []
+    y_vecs = []
+    for i in range(len(d2v_vecs) - MAXLEN):
+        x_vecs.append(d2v_vecs[i:i + MAXLEN, :])
+        y_vecs.append(d2v_vecs[i + MAXLEN,:])
+
+    tf_ds = tf.data.Dataset.from_tensor_slices((x_vecs, y_vecs))
     tf_ds = tf_ds.cache()
     tf_ds = tf_ds.shuffle(256)
     tf_ds = tf_ds.batch(batch_size, drop_remainder=True)

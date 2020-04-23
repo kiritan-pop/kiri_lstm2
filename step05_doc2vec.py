@@ -35,14 +35,14 @@ for (line,tag) in zip(lines,tags):
 # 学習モデル=DBOW（デフォルトはdm=1:学習モデル=DM）
 if not os.path.exists('out/d2v.model'):
     model = Doc2Vec(documents=training_docs,
-                    vector_size=128,
+                    vector_size=32,
                     window=8,
                     # alpha=0.025,
                     # min_alpha=0.0001,
                     min_count=10,
                     # sample=1e-5,
                     # workers=2,
-                    epochs=10,
+                    epochs=50,
                     # negative=5,
                     # hs=0,
                     # dm=1,

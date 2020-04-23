@@ -1,10 +1,11 @@
+*/.DS_Store
 *.txt
 *.json
 *.model
 *.npy
 *.h5
 *.db
-step01_get_toots.rb
+step01_get.rb
 old/
 test/
 step01_get_toots_alt.rb

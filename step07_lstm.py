@@ -18,15 +18,15 @@ import math
 from gensim.models.doc2vec import Doc2Vec
 
 #変更するとモデル再構築必要
-DOC_VEC_SIZE = 128 # Doc2vecの出力より
-VEC_SIZE = 256  # 文字ベクトル次元／トゥートベクトル次元
+DOC_VEC_SIZE = 32 # Doc2vecの出力より
+VEC_SIZE = 64  # 文字ベクトル次元
 MAXLEN = 5      # timestep
 MU = "🧪"       # 無
 END = "🦷"      # 終わりマーク
 
 #いろいろなパラメータ
 epochs = 30
-batch_size = 4096
+batch_size = 2**12
 # 同時実行プロセス数
 process_count = multiprocessing.cpu_count() - 1
 
@@ -72,7 +72,7 @@ def build_tf_ds(batch_size=1024):
                 tmp_chars = tmp_chars[1:] + next_char
 
     tf_ds = tf.data.Dataset.from_generator(gen, ((tf.float32, tf.uint32), tf.uint8))
-    tf_ds = tf_ds.cache()
+    tf_ds = tf_ds.cache(".cache")
     tf_ds = tf_ds.shuffle(256)
     tf_ds = tf_ds.batch(batch_size, drop_remainder=True)
     tf_ds = tf_ds.prefetch(tf.data.experimental.AUTOTUNE)    
@@ -170,24 +170,24 @@ if __name__ == '__main__':
     model.summary()
 
     model.compile(loss='categorical_crossentropy',
-                  optimizer=Nadam())  # mean_squared_error
+                  optimizer=Adam())  # mean_squared_error
     m = model
     # テキスト文章取得
     toots = list([tmp.strip() for tmp in open("/content/drive/My Drive/colab/toot_merge_n.txt").readlines()])
     # d2vモデル ベクトル取得
     d2v_vecs = Doc2Vec.load("/content/drive/My Drive/colab/d2v.model").docvecs.vectors_docs
     # データセット構築
-    generator = build_tf_ds(batch_size=batch_size)
+    dataset = build_tf_ds(batch_size=batch_size)
     # コールバック設定
     print_callback = LambdaCallback(on_epoch_end=on_epoch_end)
     ES = EarlyStopping(monitor='loss', min_delta=0.001, patience=5, verbose=0, mode='auto')
     # トレーニング
-    m.fit(generator,
+    m.fit(dataset,
         callbacks=[print_callback,ES],
-        epochs=30,
+        epochs=epochs,
         verbose=1,
-        steps_per_epoch=100,
-        initial_epoch=0,
+        # steps_per_epoch=100,
+        # initial_epoch=0,
         # max_queue_size=process_count,
         # workers=2,
         # use_multiprocessing=False
