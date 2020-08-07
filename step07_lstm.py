@@ -59,23 +59,38 @@ def sample(preds, temperature=1.0):
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
 
+
 def build_tf_ds(batch_size=1024):
     def gen():
-        for id,toot in enumerate(toots):
+        x1, x2, y = [], [], []
+        for id, toot in enumerate(toots):
             tmp_chars = MU * MAXLEN
             for i, next_char in enumerate(toot+END):
                 tmp_idxs = []
                 for char in tmp_chars:
                     tmp_idxs.append(char_idx[char])
                 nextidx = char_idx[next_char]
-                yield ((d2v_vecs[id], tmp_idxs), tf.one_hot(nextidx, num_chars+2))
+                # yield ((d2v_vecs[id], tmp_idxs), tf.one_hot(nextidx, num_chars+2))
+                x1.append(d2v_vecs[id])
+                x2.append(tmp_idxs)
+                y.append(nextidx)
                 tmp_chars = tmp_chars[1:] + next_char
-
-    tf_ds = tf.data.Dataset.from_generator(gen, ((tf.float32, tf.uint32), tf.uint8))
-    tf_ds = tf_ds.cache(".cache")
+        return np.asarray(x1), np.asarray(x2), y
+    # tf_ds = tf.data.Dataset.from_generator(gen, ((tf.float32, tf.uint32), tf.uint8))
+    tf_dsX1, tf_dsX2, tf_dsY = gen()
+    print(len(tf_dsX1))
+    tf_dsX1 = tf.data.Dataset.from_tensor_slices(tf.cast(tf_dsX1, tf.float32))
+    tf_dsX2 = tf.data.Dataset.from_tensor_slices(tf.cast(tf_dsX2, tf.uint16))
+    tf_dsX = tf.data.Dataset.zip((tf_dsX1, tf_dsX2))
+    tf_dsY = tf.data.Dataset.from_tensor_slices(
+        tf.one_hot(tf_dsY, num_chars+2))
+    tf_ds = tf.data.Dataset.zip((tf_dsX, tf_dsY))
+    # tf_ds = tf_ds.cache()
+    # tf_ds = tf_ds.cache(".cache")
     tf_ds = tf_ds.shuffle(256)
     tf_ds = tf_ds.batch(batch_size, drop_remainder=True)
-    tf_ds = tf_ds.prefetch(tf.data.experimental.AUTOTUNE)    
+    tf_ds = tf_ds.shuffle(64)
+    tf_ds = tf_ds.prefetch(tf.data.experimental.AUTOTUNE)
     return tf_ds
 
 
@@ -186,7 +201,7 @@ if __name__ == '__main__':
         callbacks=[print_callback,ES],
         epochs=epochs,
         verbose=1,
-        # steps_per_epoch=100,
+        # steps_per_epoch=10,
         # initial_epoch=0,
         # max_queue_size=process_count,
         # workers=2,

@@ -23,8 +23,8 @@ MAXLEN = 10     # vec推定で参照するトゥート(vecor)数
 AVE_LEN = 2
 
 #いろいろなパラメータ
-epochs = 10
-batch_size = 1024
+epochs = 2
+batch_size = 2**12
 # 同時実行プロセス数
 process_count = multiprocessing.cpu_count() - 1
 
@@ -42,14 +42,20 @@ def lstm_model():
 
 def build_tf_ds(batch_size=1):
     def gen():
+        x, y = [],[]
         for i in range(len(d2v_vecs) - MAXLEN):
-            yield (d2v_vecs[i:i + MAXLEN, :], d2v_vecs[i + MAXLEN,:])
+            # yield (d2v_vecs[i:i + MAXLEN, :], d2v_vecs[i + MAXLEN,:])
+            x.append(d2v_vecs[i:i + MAXLEN, :])
+            y.append(d2v_vecs[i + MAXLEN, :])
+        return np.asarray(x), np.asarray(y)
 
-    tf_ds = tf.data.Dataset.from_generator(gen, (tf.float32, tf.float32))
-    tf_ds = tf_ds.cache()
+    # tf_ds = tf.data.Dataset.from_generator(gen, (tf.float32, tf.float32))
+    tf_ds = tf.data.Dataset.from_tensor_slices((gen()))
+    # tf_ds = tf_ds.cache()
     tf_ds = tf_ds.shuffle(256)
     tf_ds = tf_ds.batch(batch_size, drop_remainder=True)
-    tf_ds = tf_ds.prefetch(tf.data.experimental.AUTOTUNE)    
+    tf_ds = tf_ds.shuffle(64)
+    tf_ds = tf_ds.prefetch(tf.data.experimental.AUTOTUNE)
     return tf_ds
 
 
